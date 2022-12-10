@@ -1,96 +1,216 @@
 #include "queue.c"
 #include <sys/time.h>
 #include <string.h>
-#include <pthread.h> // pthread_*
+#include <pthread.h>
 
+#define NUM_THREADS 4
 int simulationTime = 120;    // simulation time
 int seed = 10;               // seed for randomness
 int emergencyFrequency = 30; // frequency of emergency gift requests from New Zealand
 
-void* ElfA(void *arg); // the one that can paint
-void* ElfB(void *arg); // the one that can assemble
-void* Santa(void *arg); 
-void* ControlThread(void *arg); // handles printing and queues (up to you)
+void *ElfA(void *arg); // the one that can paint
+void *ElfB(void *arg); // the one that can assemble
+void *Santa(void *arg);
+void *ControlThread(void *arg); // handles printing and queues (up to you)
+
+// queue declarations
+Queue *painting;
+Queue *packaging;
+Queue *assembly;
+Queue *qa;
+Queue *delivery;
+
+// our function declarations
+int getGiftType();
+void addGiftToQueues(int giftType, int* giftID, int* taskID);
+void printTask(Task t);
 
 // pthread sleeper function
-int pthread_sleep (int seconds)
+int pthread_sleep(int seconds)
 {
     pthread_mutex_t mutex;
     pthread_cond_t conditionvar;
     struct timespec timetoexpire;
-    if(pthread_mutex_init(&mutex,NULL))
+    if (pthread_mutex_init(&mutex, NULL))
     {
         return -1;
     }
-    if(pthread_cond_init(&conditionvar,NULL))
+    if (pthread_cond_init(&conditionvar, NULL))
     {
         return -1;
     }
     struct timeval tp;
-    //When to expire is an absolute time, so get the current time and add it to our delay time
+    // When to expire is an absolute time, so get the current time and add it to our delay time
     gettimeofday(&tp, NULL);
-    timetoexpire.tv_sec = tp.tv_sec + seconds; timetoexpire.tv_nsec = tp.tv_usec * 1000;
-    
+    timetoexpire.tv_sec = tp.tv_sec + seconds;
+    timetoexpire.tv_nsec = tp.tv_usec * 1000;
+
     pthread_mutex_lock(&mutex);
-    int res =  pthread_cond_timedwait(&conditionvar, &mutex, &timetoexpire);
+    int res = pthread_cond_timedwait(&conditionvar, &mutex, &timetoexpire);
     pthread_mutex_unlock(&mutex);
     pthread_mutex_destroy(&mutex);
     pthread_cond_destroy(&conditionvar);
-    
-    //Upon successful completion, a value of zero shall be returned
+
+    // Upon successful completion, a value of zero shall be returned
     return res;
 }
 
-
-int main(int argc,char **argv){
+int main(int argc, char **argv)
+{
     // -t (int) => simulation time in seconds
     // -s (int) => change the random seed
-    for(int i=1; i<argc; i++){
-        if(!strcmp(argv[i], "-t")) {simulationTime = atoi(argv[++i]);}
-        else if(!strcmp(argv[i], "-s"))  {seed = atoi(argv[++i]);}
+    for (int i = 1; i < argc; i++)
+    {
+        if (!strcmp(argv[i], "-t"))
+        {
+            simulationTime = atoi(argv[++i]);
+        }
+        else if (!strcmp(argv[i], "-s"))
+        {
+            seed = atoi(argv[++i]);
+        }
     }
-    
+
+    //initialize Queues.
+    painting = ConstructQueue(1000);
+    packaging = ConstructQueue(1000);
+    assembly = ConstructQueue(1000);
+    qa = ConstructQueue(1000);
+    delivery = ConstructQueue(1000);
+
     srand(seed); // feed the seed
-    
-    /* Queue usage example
-        Queue *myQ = ConstructQueue(1000);
-        Task t;
-        t.ID = myID;
-        t.type = 2;
-        Enqueue(myQ, t);
-        Task ret = Dequeue(myQ);
-        DestructQueue(myQ);
-    */
+
+    pthread_t threads[NUM_THREADS];
+
+    int giftID = 1;
+    int taskID = 1;
+    for (int i = 0; i < simulationTime; i++)
+    {
+        int giftType = getGiftType();
+        if (giftType != -1){
+        addGiftToQueues(giftType, &giftID, &taskID);
+        }
+        
+    }
 
     // your code goes here
-    // you can simulate gift request creation in here, 
+    // you can simulate gift request creation in here,
     // but make sure to launch the threads first
 
     return 0;
 }
 
-void* ElfA(void *arg){
+void *ElfA(void *arg)
+{ // the one that can paint
     int x = 1;
     void *pointer = &x;
     return pointer;
 }
 
-void* ElfB(void *arg){
+void *ElfB(void *arg)
+{ // the one that can assemble
     int x = 1;
     void *pointer = &x;
     return pointer;
 }
 
 // manages Santa's tasks
-void* Santa(void *arg){
+void *Santa(void *arg)
+{
     int x = 1;
     void *pointer = &x;
     return pointer;
 }
 
 // the function that controls queues and output
-void* ControlThread(void *arg){
+void *ControlThread(void *arg)
+{ // handles printing and queues (up to you)
     int x = 1;
     void *pointer = &x;
     return pointer;
 }
+
+int getGiftType()
+{
+    int probability = rand() % 100;
+    if (probability <= 40)
+    {
+        return 1;
+    }
+    else if (probability > 40 && probability <= 60)
+    {
+        return 2;
+    }
+    else if (probability > 60 && probability <= 80)
+    {
+        return 3;
+    }
+    else if (probability > 80 && probability <= 85)
+    {
+        return 4;
+    }
+    else if (probability > 85 && probability <= 90)
+    {
+        return 5;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+void addGiftToQueues(int giftType, int* giftID, int* taskID)
+{
+    Task t;
+    t.giftID = *giftID;
+    t.taskID = *taskID;
+    t.giftType = giftType;
+    Task ret;
+    switch (giftType)
+        {
+        case 1:
+            Enqueue(packaging,t);
+            ret = Dequeue(packaging);
+            printTask(ret);
+            break;
+        case 2:
+            Enqueue(painting,t);
+            ret = Dequeue(painting);
+            printTask(ret);
+            break;
+        case 3:
+            Enqueue(assembly,t);
+            ret = Dequeue(assembly);
+            printTask(ret);
+            break;
+        case 4:
+            Enqueue(painting,t);
+            ret = Dequeue(painting);
+            printTask(ret);
+            (*taskID)++;
+            t.taskID = *taskID;
+            Enqueue(qa,t);
+            ret = Dequeue(qa);
+            printTask(ret);
+            break;
+        case 5:
+            Enqueue(assembly,t);
+            ret = Dequeue(assembly);
+            printTask(ret);
+            (*taskID)++;
+            t.taskID = *taskID;
+            Enqueue(qa,t);
+            ret = Dequeue(qa);
+            printTask(ret);
+            break;
+        default:
+            break;
+        }
+    (*giftID)++;
+    (*taskID)++;
+}
+
+void printTask(Task t){
+    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t.taskID, t.giftID, t.giftType);
+}
+

@@ -5,8 +5,9 @@
 #define FALSE 0
 
 typedef struct {
-    int ID;
-    int type;
+    int taskID;
+    int giftType;
+    int giftID;
     // you might want to add variables here!
 } Task;
 
