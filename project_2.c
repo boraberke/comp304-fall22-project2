@@ -1,4 +1,7 @@
 #include "queue.c"
+#include <sys/time.h>
+#include <string.h>
+#include <pthread.h> // pthread_*
 
 int simulationTime = 120;    // simulation time
 int seed = 10;               // seed for randomness
@@ -43,7 +46,7 @@ int main(int argc,char **argv){
     // -t (int) => simulation time in seconds
     // -s (int) => change the random seed
     for(int i=1; i<argc; i++){
-        if if(!strcmp(argv[i], "-t")) {simulationTime = atoi(argv[++i]);}
+        if(!strcmp(argv[i], "-t")) {simulationTime = atoi(argv[++i]);}
         else if(!strcmp(argv[i], "-s"))  {seed = atoi(argv[++i]);}
     }
     
@@ -67,19 +70,27 @@ int main(int argc,char **argv){
 }
 
 void* ElfA(void *arg){
-
+    int x = 1;
+    void *pointer = &x;
+    return pointer;
 }
 
 void* ElfB(void *arg){
-
+    int x = 1;
+    void *pointer = &x;
+    return pointer;
 }
 
 // manages Santa's tasks
 void* Santa(void *arg){
-
+    int x = 1;
+    void *pointer = &x;
+    return pointer;
 }
 
 // the function that controls queues and output
 void* ControlThread(void *arg){
-
+    int x = 1;
+    void *pointer = &x;
+    return pointer;
 }
