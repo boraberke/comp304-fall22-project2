@@ -4,14 +4,20 @@
 #include <pthread.h>
 
 #define NUM_THREADS 4
+#define PAINTING_TIME 3
+#define ASSEMBLY_TIME 2
+#define QA_TIME 1
+#define DELIVERY_TIME 1
+#define PACKAGING_TIME 1
+#define NORMAL_WAITING_TIME 1
 int simulationTime = 120;    // simulation time
 int seed = 10;               // seed for randomness
 int emergencyFrequency = 30; // frequency of emergency gift requests from New Zealand
 
-void *ElfA(void *arg); // the one that can paint
-void *ElfB(void *arg); // the one that can assemble
-void *Santa(void *arg);
-void *ControlThread(void *arg); // handles printing and queues (up to you)
+void *ElfA(); // the one that can paint
+void *ElfB(); // the one that can assemble
+void *Santa();
+void *ControlThread(); // handles printing and queues (up to you)
 
 // queue declarations
 Queue *painting;
@@ -20,10 +26,17 @@ Queue *assembly;
 Queue *qa;
 Queue *delivery;
 
+// mutex declarations
+pthread_mutex_t mtxPainting;
+pthread_mutex_t mtxPackaging;
+pthread_mutex_t mtxAssembly;
+pthread_mutex_t mtxQa;
+pthread_mutex_t mtxDelivery;
+
 // our function declarations
 int getGiftType();
-void addGiftToQueues(int giftType, int* giftID, int* taskID);
-void printTask(Task t);
+void addGiftToQueues(int giftType, int *giftID, int *taskID);
+void printTask(Task *t);
 
 // pthread sleeper function
 int pthread_sleep(int seconds)
@@ -71,63 +84,202 @@ int main(int argc, char **argv)
         }
     }
 
-    //initialize Queues.
+    // initialize Queues.
     painting = ConstructQueue(1000);
     packaging = ConstructQueue(1000);
     assembly = ConstructQueue(1000);
     qa = ConstructQueue(1000);
     delivery = ConstructQueue(1000);
 
+    // initialize mutexes
+    pthread_mutex_init(&mtxPainting, NULL);
+    pthread_mutex_init(&mtxPackaging, NULL);
+    pthread_mutex_init(&mtxAssembly, NULL);
+    pthread_mutex_init(&mtxQa, NULL);
+    pthread_mutex_init(&mtxDelivery, NULL);
+
     srand(seed); // feed the seed
 
     pthread_t threads[NUM_THREADS];
 
-    int giftID = 1;
-    int taskID = 1;
-    for (int i = 0; i < simulationTime; i++)
-    {
-        int giftType = getGiftType();
-        if (giftType != -1){
-        addGiftToQueues(giftType, &giftID, &taskID);
-        }
-        
-    }
+    pthread_create(&threads[0], NULL, ControlThread, NULL);
+    pthread_create(&threads[1], NULL, ElfA, NULL);
+    pthread_create(&threads[2], NULL, ElfB, NULL);
+    pthread_create(&threads[3], NULL, Santa, NULL);
 
-    // your code goes here
-    // you can simulate gift request creation in here,
-    // but make sure to launch the threads first
+    /* Last thing that main() should do */
+    pthread_exit(NULL);
 
     return 0;
 }
 
-void *ElfA(void *arg)
+void *ElfA()
 { // the one that can paint
-    int x = 1;
-    void *pointer = &x;
-    return pointer;
+
+    for (int i = 0; i < simulationTime; i++)
+    {
+        
+        pthread_mutex_lock(&mtxPackaging);
+        if (!isEmpty(packaging))
+        {
+            Task t = Dequeue(packaging);
+            printTask(&t);
+            pthread_mutex_unlock(&mtxPackaging);
+            pthread_sleep(PACKAGING_TIME);
+        }
+        else
+        {
+            pthread_mutex_unlock(&mtxPackaging);
+            pthread_mutex_lock(&mtxPainting);
+            if (!isEmpty(painting))
+            {
+                Task t = Dequeue(painting);
+                printTask(&t);
+                pthread_mutex_unlock(&mtxPainting);
+                pthread_sleep(PAINTING_TIME);
+            }
+            else
+            {
+                pthread_mutex_unlock(&mtxPainting);
+                pthread_sleep(NORMAL_WAITING_TIME);
+            }
+        }
+    }
+    pthread_exit(NULL);
 }
 
-void *ElfB(void *arg)
+void *ElfB()
 { // the one that can assemble
-    int x = 1;
-    void *pointer = &x;
-    return pointer;
+
+    for (int i = 0; i < simulationTime; i++)
+    {
+        
+        pthread_mutex_lock(&mtxPackaging);
+        if (!isEmpty(packaging))
+        {
+            Task t = Dequeue(packaging);
+            printTask(&t);
+            pthread_mutex_unlock(&mtxPackaging);
+            pthread_sleep(PACKAGING_TIME);
+        }
+        else
+        {
+            pthread_mutex_unlock(&mtxPackaging);
+            pthread_mutex_lock(&mtxAssembly);
+            if (!isEmpty(assembly))
+            {
+                Task t = Dequeue(assembly);
+                printTask(&t);
+                pthread_mutex_unlock(&mtxAssembly);
+                pthread_sleep(ASSEMBLY_TIME);
+            }
+            else
+            {
+                pthread_mutex_unlock(&mtxAssembly);
+                pthread_sleep(NORMAL_WAITING_TIME);
+            }
+        }
+    }
+    pthread_exit(NULL);
 }
 
 // manages Santa's tasks
-void *Santa(void *arg)
+void *Santa()
 {
-    int x = 1;
-    void *pointer = &x;
-    return pointer;
+    for (int i = 0; i < simulationTime; i++)
+    {
+        
+        pthread_mutex_lock(&mtxDelivery);
+        if (!isEmpty(delivery))
+        {
+            Task t = Dequeue(delivery);
+            printTask(&t);
+            pthread_mutex_unlock(&mtxDelivery);
+            pthread_sleep(DELIVERY_TIME);
+        }
+        else
+        {
+            pthread_mutex_unlock(&mtxDelivery);
+            pthread_mutex_lock(&mtxQa);
+            if (!isEmpty(qa))
+            {
+                Task t = Dequeue(qa);
+                printTask(&t);
+                pthread_mutex_unlock(&mtxQa);
+                pthread_sleep(QA_TIME);
+            }
+            else
+            {
+                pthread_mutex_unlock(&mtxQa);
+                pthread_sleep(NORMAL_WAITING_TIME);
+            }
+        }
+    }
+    pthread_exit(NULL);
 }
 
 // the function that controls queues and output
-void *ControlThread(void *arg)
+void *ControlThread()
 { // handles printing and queues (up to you)
-    int x = 1;
-    void *pointer = &x;
-    return pointer;
+    int giftID = 1;
+    int taskID = 1;
+
+    for (int i = 0; i < simulationTime; i++)
+    {
+        int giftType = getGiftType();
+        if (giftType != -1)
+        {
+            Task *t = (Task*) malloc(sizeof(Task));
+            t->giftID = giftID;
+            t->taskID = taskID;
+            t->giftType = giftType;
+            switch (giftType)
+            {
+            case 1:
+                pthread_mutex_lock(&mtxPackaging);
+                Enqueue(packaging, *t);
+                pthread_mutex_unlock(&mtxPackaging);
+                break;
+            case 2:
+                pthread_mutex_lock(&mtxPainting);
+                Enqueue(painting, *t);
+                pthread_mutex_unlock(&mtxPainting);
+                break;
+            case 3:
+                pthread_mutex_lock(&mtxAssembly);
+                Enqueue(assembly, *t);
+                pthread_mutex_unlock(&mtxAssembly);
+                break;
+            case 4:
+                pthread_mutex_lock(&mtxPainting);
+                Enqueue(painting, *t);
+                pthread_mutex_unlock(&mtxPainting);
+                taskID++;
+                t->taskID = taskID;
+                pthread_mutex_lock(&mtxQa);
+                Enqueue(qa, *t);
+                pthread_mutex_unlock(&mtxQa);
+                break;
+            case 5:
+                pthread_mutex_lock(&mtxAssembly);
+                Enqueue(assembly, *t);
+                pthread_mutex_unlock(&mtxAssembly);
+
+                taskID++;
+                t->taskID = taskID;
+                pthread_mutex_lock(&mtxQa);
+                Enqueue(qa, *t);
+                pthread_mutex_unlock(&mtxQa);
+                break;
+            default:
+                break;
+            }
+            giftID++;
+            taskID++;
+            pthread_sleep(NORMAL_WAITING_TIME);
+        }
+    }
+    pthread_exit(NULL);
 }
 
 int getGiftType()
@@ -159,58 +311,8 @@ int getGiftType()
     }
 }
 
-void addGiftToQueues(int giftType, int* giftID, int* taskID)
+
+void printTask(Task *t)
 {
-    Task t;
-    t.giftID = *giftID;
-    t.taskID = *taskID;
-    t.giftType = giftType;
-    Task ret;
-    switch (giftType)
-        {
-        case 1:
-            Enqueue(packaging,t);
-            ret = Dequeue(packaging);
-            printTask(ret);
-            break;
-        case 2:
-            Enqueue(painting,t);
-            ret = Dequeue(painting);
-            printTask(ret);
-            break;
-        case 3:
-            Enqueue(assembly,t);
-            ret = Dequeue(assembly);
-            printTask(ret);
-            break;
-        case 4:
-            Enqueue(painting,t);
-            ret = Dequeue(painting);
-            printTask(ret);
-            (*taskID)++;
-            t.taskID = *taskID;
-            Enqueue(qa,t);
-            ret = Dequeue(qa);
-            printTask(ret);
-            break;
-        case 5:
-            Enqueue(assembly,t);
-            ret = Dequeue(assembly);
-            printTask(ret);
-            (*taskID)++;
-            t.taskID = *taskID;
-            Enqueue(qa,t);
-            ret = Dequeue(qa);
-            printTask(ret);
-            break;
-        default:
-            break;
-        }
-    (*giftID)++;
-    (*taskID)++;
+    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t->taskID, t->giftID, t->giftType);
 }
-
-void printTask(Task t){
-    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t.taskID, t.giftID, t.giftType);
-}
-
