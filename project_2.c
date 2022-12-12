@@ -118,7 +118,7 @@ void *ElfA()
 
     for (int i = 0; i < simulationTime; i++)
     {
-        
+
         pthread_mutex_lock(&mtxPackaging);
         if (!isEmpty(packaging))
         {
@@ -126,6 +126,11 @@ void *ElfA()
             printTask(&t);
             pthread_mutex_unlock(&mtxPackaging);
             pthread_sleep(PACKAGING_TIME);
+            // Add the same task to delivery queue
+            pthread_mutex_lock(&mtxDelivery);
+            // update the task id and maybe also add the responsible elf
+            Enqueue(delivery, t);
+            pthread_mutex_unlock(&mtxDelivery);
         }
         else
         {
@@ -137,6 +142,12 @@ void *ElfA()
                 printTask(&t);
                 pthread_mutex_unlock(&mtxPainting);
                 pthread_sleep(PAINTING_TIME);
+                // if type 2 continue like below
+                // Add the same task to queue of packaging
+                pthread_mutex_lock(&mtxPackaging);
+                // todo: Add further information into t ?
+                Enqueue(packaging, t);
+                pthread_mutex_unlock(&mtxPackaging);
             }
             else
             {
@@ -153,7 +164,7 @@ void *ElfB()
 
     for (int i = 0; i < simulationTime; i++)
     {
-        
+
         pthread_mutex_lock(&mtxPackaging);
         if (!isEmpty(packaging))
         {
@@ -161,6 +172,10 @@ void *ElfB()
             printTask(&t);
             pthread_mutex_unlock(&mtxPackaging);
             pthread_sleep(PACKAGING_TIME);
+            // Add the same task to delivery queue
+            pthread_mutex_lock(&mtxDelivery);
+            Enqueue(delivery, t);
+            pthread_mutex_unlock(&mtxDelivery);
         }
         else
         {
@@ -172,6 +187,11 @@ void *ElfB()
                 printTask(&t);
                 pthread_mutex_unlock(&mtxAssembly);
                 pthread_sleep(ASSEMBLY_TIME);
+                // Add the same task to queue of packaging
+                pthread_mutex_lock(&mtxPackaging);
+                // todo: Add further information into t ?
+                Enqueue(packaging, t);
+                pthread_mutex_unlock(&mtxPackaging);
             }
             else
             {
@@ -188,7 +208,7 @@ void *Santa()
 {
     for (int i = 0; i < simulationTime; i++)
     {
-        
+
         pthread_mutex_lock(&mtxDelivery);
         if (!isEmpty(delivery))
         {
@@ -229,7 +249,7 @@ void *ControlThread()
         int giftType = getGiftType();
         if (giftType != -1)
         {
-            Task *t = (Task*) malloc(sizeof(Task));
+            Task *t = (Task *)malloc(sizeof(Task));
             t->giftID = giftID;
             t->taskID = taskID;
             t->giftType = giftType;
@@ -276,8 +296,9 @@ void *ControlThread()
             }
             giftID++;
             taskID++;
-            pthread_sleep(NORMAL_WAITING_TIME);
         }
+        pthread_sleep(NORMAL_WAITING_TIME);
+        
     }
     pthread_exit(NULL);
 }
@@ -310,7 +331,6 @@ int getGiftType()
         return -1;
     }
 }
-
 
 void printTask(Task *t)
 {

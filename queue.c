@@ -8,6 +8,8 @@ typedef struct {
     int taskID;
     int giftType;
     int giftID;
+    int taskType;
+
     // you might want to add variables here!
 } Task;
 
