@@ -13,6 +13,9 @@
 int simulationTime = 120;    // simulation time
 int seed = 10;               // seed for randomness
 int emergencyFrequency = 30; // frequency of emergency gift requests from New Zealand
+int giftID = 0;
+int taskID = 0;
+
 
 void *ElfA(); // the one that can paint
 void *ElfB(); // the one that can assemble
@@ -27,11 +30,14 @@ Queue *qa;
 Queue *delivery;
 
 // mutex declarations
+pthread_mutex_t mtxGiftCount;
+pthread_mutex_t mtxTaskCount;
 pthread_mutex_t mtxPainting;
 pthread_mutex_t mtxPackaging;
 pthread_mutex_t mtxAssembly;
 pthread_mutex_t mtxQa;
 pthread_mutex_t mtxDelivery;
+pthread_mutex_t mtxWaiting;
 
 // our function declarations
 int getGiftType();
@@ -92,11 +98,14 @@ int main(int argc, char **argv)
     delivery = ConstructQueue(1000);
 
     // initialize mutexes
+    pthread_mutex_init(&mtxGiftCount, NULL);
+    pthread_mutex_init(&mtxTaskCount, NULL);
     pthread_mutex_init(&mtxPainting, NULL);
     pthread_mutex_init(&mtxPackaging, NULL);
     pthread_mutex_init(&mtxAssembly, NULL);
     pthread_mutex_init(&mtxQa, NULL);
     pthread_mutex_init(&mtxDelivery, NULL);
+    pthread_mutex_init(&mtxWaiting, NULL);
 
     srand(seed); // feed the seed
 
@@ -118,19 +127,24 @@ void *ElfA()
 
     for (int i = 0; i < simulationTime; i++)
     {
-
         pthread_mutex_lock(&mtxPackaging);
         if (!isEmpty(packaging))
         {
             Task t = Dequeue(packaging);
+            t.responsible = 'A';
             printTask(&t);
             pthread_mutex_unlock(&mtxPackaging);
             pthread_sleep(PACKAGING_TIME);
-            // Add the same task to delivery queue
+            // Add the next task to delivery queue
+            pthread_mutex_lock(&mtxTaskCount);
+            taskID++;
+            t.taskID = taskID;
+            pthread_mutex_unlock(&mtxTaskCount);
+            t.taskType = 'D';
             pthread_mutex_lock(&mtxDelivery);
-            // update the task id and maybe also add the responsible elf
             Enqueue(delivery, t);
             pthread_mutex_unlock(&mtxDelivery);
+            
         }
         else
         {
@@ -139,13 +153,18 @@ void *ElfA()
             if (!isEmpty(painting))
             {
                 Task t = Dequeue(painting);
+                t.responsible = 'A';
                 printTask(&t);
                 pthread_mutex_unlock(&mtxPainting);
                 pthread_sleep(PAINTING_TIME);
                 // if type 2 continue like below
                 // Add the same task to queue of packaging
+                pthread_mutex_lock(&mtxTaskCount);
+                taskID++;
+                t.taskID = taskID;
+                pthread_mutex_unlock(&mtxTaskCount);
+                t.taskType = 'C';
                 pthread_mutex_lock(&mtxPackaging);
-                // todo: Add further information into t ?
                 Enqueue(packaging, t);
                 pthread_mutex_unlock(&mtxPackaging);
             }
@@ -169,10 +188,16 @@ void *ElfB()
         if (!isEmpty(packaging))
         {
             Task t = Dequeue(packaging);
+            t.responsible = 'B';
             printTask(&t);
             pthread_mutex_unlock(&mtxPackaging);
             pthread_sleep(PACKAGING_TIME);
             // Add the same task to delivery queue
+            pthread_mutex_lock(&mtxTaskCount);
+            taskID++;
+            t.taskID = taskID;
+            pthread_mutex_unlock(&mtxTaskCount);
+            t.taskType = 'D';
             pthread_mutex_lock(&mtxDelivery);
             Enqueue(delivery, t);
             pthread_mutex_unlock(&mtxDelivery);
@@ -184,12 +209,17 @@ void *ElfB()
             if (!isEmpty(assembly))
             {
                 Task t = Dequeue(assembly);
+                t.responsible = 'B';
                 printTask(&t);
                 pthread_mutex_unlock(&mtxAssembly);
                 pthread_sleep(ASSEMBLY_TIME);
                 // Add the same task to queue of packaging
+                pthread_mutex_lock(&mtxTaskCount);
+                taskID++;
+                t.taskID = taskID;
+                pthread_mutex_unlock(&mtxTaskCount);
+                t.taskType = 'C';
                 pthread_mutex_lock(&mtxPackaging);
-                // todo: Add further information into t ?
                 Enqueue(packaging, t);
                 pthread_mutex_unlock(&mtxPackaging);
             }
@@ -213,6 +243,7 @@ void *Santa()
         if (!isEmpty(delivery))
         {
             Task t = Dequeue(delivery);
+            t.responsible = 'S';
             printTask(&t);
             pthread_mutex_unlock(&mtxDelivery);
             pthread_sleep(DELIVERY_TIME);
@@ -224,8 +255,17 @@ void *Santa()
             if (!isEmpty(qa))
             {
                 Task t = Dequeue(qa);
+                t.responsible = 'S';
                 printTask(&t);
                 pthread_mutex_unlock(&mtxQa);
+                pthread_mutex_lock(&mtxTaskCount);
+                taskID++;
+                t.taskID = taskID;
+                pthread_mutex_unlock(&mtxTaskCount);
+                t.taskType = 'D';
+                pthread_mutex_lock(&mtxDelivery);
+                Enqueue(delivery, t);
+                pthread_mutex_unlock(&mtxDelivery);
                 pthread_sleep(QA_TIME);
             }
             else
@@ -241,8 +281,6 @@ void *Santa()
 // the function that controls queues and output
 void *ControlThread()
 { // handles printing and queues (up to you)
-    int giftID = 1;
-    int taskID = 1;
 
     for (int i = 0; i < simulationTime; i++)
     {
@@ -250,43 +288,62 @@ void *ControlThread()
         if (giftType != -1)
         {
             Task *t = (Task *)malloc(sizeof(Task));
+            pthread_mutex_lock(&mtxGiftCount);
+            giftID++;
             t->giftID = giftID;
+            pthread_mutex_unlock(&mtxGiftCount);
+            pthread_mutex_lock(&mtxTaskCount);
+            taskID++;
             t->taskID = taskID;
+            pthread_mutex_unlock(&mtxTaskCount);
             t->giftType = giftType;
+            //Task type: C = packaging, P = painting, A = assembly, Q = QA, D = delivery
             switch (giftType)
             {
             case 1:
                 pthread_mutex_lock(&mtxPackaging);
+                t->taskType = 'C';
                 Enqueue(packaging, *t);
                 pthread_mutex_unlock(&mtxPackaging);
                 break;
             case 2:
                 pthread_mutex_lock(&mtxPainting);
+                t->taskType = 'P';
                 Enqueue(painting, *t);
                 pthread_mutex_unlock(&mtxPainting);
                 break;
             case 3:
                 pthread_mutex_lock(&mtxAssembly);
+                t->taskType = 'A';
                 Enqueue(assembly, *t);
                 pthread_mutex_unlock(&mtxAssembly);
                 break;
             case 4:
                 pthread_mutex_lock(&mtxPainting);
+                t->taskType = 'P';
                 Enqueue(painting, *t);
                 pthread_mutex_unlock(&mtxPainting);
+                pthread_mutex_lock(&mtxTaskCount);
                 taskID++;
                 t->taskID = taskID;
+                pthread_mutex_unlock(&mtxTaskCount);
+                //queueing the second task
+                t->taskType = 'Q';
                 pthread_mutex_lock(&mtxQa);
                 Enqueue(qa, *t);
                 pthread_mutex_unlock(&mtxQa);
                 break;
             case 5:
                 pthread_mutex_lock(&mtxAssembly);
+                t->taskType = 'A';
                 Enqueue(assembly, *t);
                 pthread_mutex_unlock(&mtxAssembly);
-
+                pthread_mutex_lock(&mtxTaskCount);
                 taskID++;
                 t->taskID = taskID;
+                pthread_mutex_unlock(&mtxTaskCount);
+                //queueing the second task
+                t->taskType = 'Q';
                 pthread_mutex_lock(&mtxQa);
                 Enqueue(qa, *t);
                 pthread_mutex_unlock(&mtxQa);
@@ -294,8 +351,7 @@ void *ControlThread()
             default:
                 break;
             }
-            giftID++;
-            taskID++;
+            free(t);
         }
         pthread_sleep(NORMAL_WAITING_TIME);
         
@@ -334,5 +390,5 @@ int getGiftType()
 
 void printTask(Task *t)
 {
-    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t->taskID, t->giftID, t->giftType);
+    printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c, Responsible: %c\n", t->taskID, t->giftID, t->giftType, t->taskType, t->responsible);
 }

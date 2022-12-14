@@ -4,12 +4,14 @@
 #define TRUE  1
 #define FALSE 0
 
+
+
 typedef struct {
     int taskID;
-    int giftType;
     int giftID;
-    int taskType;
-
+    char taskType;
+    int giftType;
+    char responsible;
     // you might want to add variables here!
 } Task;
 
