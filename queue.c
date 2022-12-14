@@ -5,10 +5,17 @@
 #define FALSE 0
 
 typedef struct {
-    int taskID;
     int giftType;
+    int painting;
+    int assembly;
+    int qa;
+} GiftType;
+
+typedef struct {
+    int taskID;
     int giftID;
     int taskType;
+    GiftType *giftType;
 
     // you might want to add variables here!
 } Task;

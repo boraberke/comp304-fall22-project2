@@ -25,6 +25,7 @@ Queue *packaging;
 Queue *assembly;
 Queue *qa;
 Queue *delivery;
+Queue *waiting_for_packaging;
 
 // mutex declarations
 pthread_mutex_t mtxPainting;
@@ -32,6 +33,7 @@ pthread_mutex_t mtxPackaging;
 pthread_mutex_t mtxAssembly;
 pthread_mutex_t mtxQa;
 pthread_mutex_t mtxDelivery;
+pthread_mutex_t mtxWaiting;
 
 // our function declarations
 int getGiftType();
@@ -90,6 +92,7 @@ int main(int argc, char **argv)
     assembly = ConstructQueue(1000);
     qa = ConstructQueue(1000);
     delivery = ConstructQueue(1000);
+    waiting_for_packaging = ConstructQueue(1000);
 
     // initialize mutexes
     pthread_mutex_init(&mtxPainting, NULL);
@@ -97,6 +100,7 @@ int main(int argc, char **argv)
     pthread_mutex_init(&mtxAssembly, NULL);
     pthread_mutex_init(&mtxQa, NULL);
     pthread_mutex_init(&mtxDelivery, NULL);
+    pthread_mutex_init(&mtxWaiting, NULL);
 
     srand(seed); // feed the seed
 
@@ -129,6 +133,8 @@ void *ElfA()
             // Add the same task to delivery queue
             pthread_mutex_lock(&mtxDelivery);
             // update the task id and maybe also add the responsible elf
+            //Task *new_task = (Task *)malloc(sizeof(Task));
+            //t.taskID = t.taskID + 1;
             Enqueue(delivery, t);
             pthread_mutex_unlock(&mtxDelivery);
         }
@@ -252,43 +258,63 @@ void *ControlThread()
             Task *t = (Task *)malloc(sizeof(Task));
             t->giftID = giftID;
             t->taskID = taskID;
-            t->giftType = giftType;
+            GiftType *g = (GiftType *)malloc(sizeof(GiftType));
+            g->giftType = giftType;
+            g->painting = 0;
+            g->assembly = 0;
+            g->qa = 0;
+            t->giftType = g;
+            //Task type: 1 = packaging, 2 = painting, 3 = assembly, 4 = QA, 5 = delivery
             switch (giftType)
             {
             case 1:
                 pthread_mutex_lock(&mtxPackaging);
+                t->taskType = 1;
                 Enqueue(packaging, *t);
                 pthread_mutex_unlock(&mtxPackaging);
                 break;
             case 2:
                 pthread_mutex_lock(&mtxPainting);
+                t->taskType = 2;
                 Enqueue(painting, *t);
                 pthread_mutex_unlock(&mtxPainting);
                 break;
             case 3:
                 pthread_mutex_lock(&mtxAssembly);
+                t->taskType = 3;
                 Enqueue(assembly, *t);
                 pthread_mutex_unlock(&mtxAssembly);
                 break;
             case 4:
                 pthread_mutex_lock(&mtxPainting);
+                t->taskType = 2;
                 Enqueue(painting, *t);
                 pthread_mutex_unlock(&mtxPainting);
                 taskID++;
-                t->taskID = taskID;
+                //creating the second task
+                Task *new_task_4 = (Task *)malloc(sizeof(Task));
+                new_task_4->giftID = giftID;
+                new_task_4->taskID = taskID;
+                new_task_4->taskType = 4;
+                new_task_4->giftType = g;
                 pthread_mutex_lock(&mtxQa);
-                Enqueue(qa, *t);
+                Enqueue(qa, *new_task_4);
                 pthread_mutex_unlock(&mtxQa);
                 break;
             case 5:
                 pthread_mutex_lock(&mtxAssembly);
+                t->taskType = 2;
                 Enqueue(assembly, *t);
                 pthread_mutex_unlock(&mtxAssembly);
-
                 taskID++;
-                t->taskID = taskID;
+                //creating the second task
+                Task *new_task_5 = (Task *)malloc(sizeof(Task));
+                new_task_5->giftID = giftID;
+                new_task_5->taskID = taskID;
+                new_task_5->taskType = 4;
+                new_task_5->giftType = g;
                 pthread_mutex_lock(&mtxQa);
-                Enqueue(qa, *t);
+                Enqueue(qa, *new_task_5);
                 pthread_mutex_unlock(&mtxQa);
                 break;
             default:
@@ -334,5 +360,5 @@ int getGiftType()
 
 void printTask(Task *t)
 {
-    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t->taskID, t->giftID, t->giftType);
+    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t->taskID, t->giftID, t->giftType->giftType);
 }
