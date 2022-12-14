@@ -130,11 +130,11 @@ void *ElfA()
             printTask(&t);
             pthread_mutex_unlock(&mtxPackaging);
             pthread_sleep(PACKAGING_TIME);
-            // Add the same task to delivery queue
+            // Add the next task to delivery queue
             pthread_mutex_lock(&mtxDelivery);
             // update the task id and maybe also add the responsible elf
-            //Task *new_task = (Task *)malloc(sizeof(Task));
-            //t.taskID = t.taskID + 1;
+            t.taskID = t.taskID + 1;
+            t.taskType = 5;
             Enqueue(delivery, t);
             pthread_mutex_unlock(&mtxDelivery);
         }
@@ -180,6 +180,7 @@ void *ElfB()
             pthread_sleep(PACKAGING_TIME);
             // Add the same task to delivery queue
             pthread_mutex_lock(&mtxDelivery);
+            t.taskID++;
             Enqueue(delivery, t);
             pthread_mutex_unlock(&mtxDelivery);
         }
@@ -264,57 +265,51 @@ void *ControlThread()
             g->assembly = 0;
             g->qa = 0;
             t->giftType = g;
-            //Task type: 1 = packaging, 2 = painting, 3 = assembly, 4 = QA, 5 = delivery
+            //Task type: C = packaging, P = painting, A = assembly, Q = QA, D = delivery
             switch (giftType)
             {
             case 1:
                 pthread_mutex_lock(&mtxPackaging);
-                t->taskType = 1;
+                t->taskType = 'C';
                 Enqueue(packaging, *t);
                 pthread_mutex_unlock(&mtxPackaging);
                 break;
             case 2:
                 pthread_mutex_lock(&mtxPainting);
-                t->taskType = 2;
+                t->taskType = 'P';
                 Enqueue(painting, *t);
                 pthread_mutex_unlock(&mtxPainting);
                 break;
             case 3:
                 pthread_mutex_lock(&mtxAssembly);
-                t->taskType = 3;
+                t->taskType = 'A';
                 Enqueue(assembly, *t);
                 pthread_mutex_unlock(&mtxAssembly);
                 break;
             case 4:
                 pthread_mutex_lock(&mtxPainting);
-                t->taskType = 2;
+                t->taskType = 'P';
                 Enqueue(painting, *t);
                 pthread_mutex_unlock(&mtxPainting);
                 taskID++;
-                //creating the second task
-                Task *new_task_4 = (Task *)malloc(sizeof(Task));
-                new_task_4->giftID = giftID;
-                new_task_4->taskID = taskID;
-                new_task_4->taskType = 4;
-                new_task_4->giftType = g;
+                //queueing the second task
+                t->taskID = taskID;
+                t->taskType = 'Q';
                 pthread_mutex_lock(&mtxQa);
-                Enqueue(qa, *new_task_4);
+                Enqueue(qa, *t);
                 pthread_mutex_unlock(&mtxQa);
                 break;
             case 5:
                 pthread_mutex_lock(&mtxAssembly);
-                t->taskType = 2;
+                t->taskType = 'A';
                 Enqueue(assembly, *t);
                 pthread_mutex_unlock(&mtxAssembly);
                 taskID++;
-                //creating the second task
-                Task *new_task_5 = (Task *)malloc(sizeof(Task));
-                new_task_5->giftID = giftID;
-                new_task_5->taskID = taskID;
-                new_task_5->taskType = 4;
-                new_task_5->giftType = g;
+                //queueing the second task
+                t->taskID = taskID;
+                t->taskType = 'Q';
                 pthread_mutex_lock(&mtxQa);
-                Enqueue(qa, *new_task_5);
+                Enqueue(qa, *t);
                 pthread_mutex_unlock(&mtxQa);
                 break;
             default:
@@ -322,6 +317,8 @@ void *ControlThread()
             }
             giftID++;
             taskID++;
+            free(t);
+            //DONT FORGET TO FREE GIFTTYPES
         }
         pthread_sleep(NORMAL_WAITING_TIME);
         
@@ -360,5 +357,5 @@ int getGiftType()
 
 void printTask(Task *t)
 {
-    printf("Task ID: %d, Gift ID: %d, Gift Type: %d\n", t->taskID, t->giftID, t->giftType->giftType);
+    printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c\n", t->taskID, t->giftID, t->giftType->giftType, t->taskType);
 }

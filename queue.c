@@ -14,7 +14,7 @@ typedef struct {
 typedef struct {
     int taskID;
     int giftID;
-    int taskType;
+    char taskType;
     GiftType *giftType;
 
     // you might want to add variables here!
