@@ -4,19 +4,14 @@
 #define TRUE  1
 #define FALSE 0
 
-typedef struct {
-    int giftType;
-    int painting;
-    int assembly;
-    int qa;
-} GiftType;
+
 
 typedef struct {
     int taskID;
     int giftID;
     char taskType;
-    GiftType *giftType;
-
+    int giftType;
+    char responsible;
     // you might want to add variables here!
 } Task;
 
