@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TRUE  1
+#define FALSE 0
+
 typedef struct {
     int giftID;
     int giftType;
@@ -11,11 +14,11 @@ typedef struct {
     int qa;
 } Gift;
 
-struct node {
-    Gift *data;
+typedef struct node {
+    Gift data;
     struct node *next;
     struct node *prev;
-} Node;
+} node;
 
 typedef struct List {
     node *head;
@@ -26,14 +29,16 @@ typedef struct List {
 
 List *ConstructList(int limit);
 void DestructList(List *pList);
-int Add(List *pList, Task t);
-void Delete(List *pList);
+int Add(List *pList, Gift g);
+void Delete(List *pList, int giftID);
+void DeleteFirst(List *pList);
 int isEmpty(List *pList);
-struct node* find_ID(List *pList, int giftID);
+node* FindID(List *pList, int giftID);
+int FindReady(List *pList);
 
 List *ConstructList(int limit) {
     List *list = (List*) malloc(sizeof (List));
-    if (queue == NULL) {
+    if (list == NULL) {
         return NULL;
     }
     if (limit <= 0) {
@@ -48,14 +53,15 @@ List *ConstructList(int limit) {
 }
 
 //NEEDS TO BE UPDATED
-void DestructList(List *list) {
-    node *pN;
-    while (!isEmpty(list)) {
-        delete(list);
+void DestructList(List *pList) {
+    node* current = pList->head;
+    node* next;
+    while (!isEmpty(pList)) {
+        DeleteFirst(pList);
     }
-    free(list);
+    free(pList);
 }
-
+//add an item to the list
 int Add(List *pList, Gift g) {
     /* Bad parameter */
     node* item = (node*) malloc(sizeof (node));
@@ -64,18 +70,18 @@ int Add(List *pList, Gift g) {
     if ((pList == NULL) || (item == NULL)) {
         return FALSE;
     }
-    // if(pQueue->limit != 0)
+    
     if (pList->size >= pList->limit) {
         return FALSE;
     }
-    /*the queue is empty*/
+    /*the list is empty*/
     item->next = NULL;
     if (pList->size == 0) {
         pList->head = item;
         pList->tail = item;
 
     } else {
-        /*adding item to the end of the queue*/
+        /*adding item to the end of the list*/
         item->prev = pList->tail;
         pList->tail->next = item;
         pList->tail = item;
@@ -88,21 +94,31 @@ int Add(List *pList, Gift g) {
 void Delete(List *pList, int giftID) {
 
     if(isEmpty(pList)) {
-        return NULL;
+        return;
     }
     //navigate through list
-    struct node* current = find(pList, giftID);
-
+    node* current = FindID(pList, giftID);
     //found a match, update the link
-    if(current->data->giftID == pList->head->data->giftID) {
+    if(current->data.giftID == pList->head->data.giftID) {
         //change first to point to next link
-        pList->head = head->next;
-        pList->head->prev = NULL;
-    else if(current->data->giftID == pList->tail->data->giftID) {
-        pList->tail = tail->prev;
+        pList->head = pList->head->next;
+        if(pList->head == NULL)
+        {
+            pList->tail = NULL;
+        }
+        else
+        {
+            pList->head->prev = NULL;
+
+        }
+    }
+    else if(current->data.giftID == pList->tail->data.giftID) 
+    {
+        pList->tail = pList->tail->prev;
         pList->tail->next = NULL;
     }
-    else {
+    else 
+    {
         //bypass the current link
         current->prev->next = current->next;
         current->next->prev = current->prev;
@@ -110,6 +126,30 @@ void Delete(List *pList, int giftID) {
     pList->size--;
     free(current);
 }  
+
+//delete head of the list
+void DeleteFirst(List *pList) {
+
+    if(isEmpty(pList)) {
+        return;
+    }
+    //navigate through list
+    node* head = pList->head;
+
+    if(head->next == NULL)
+    {
+        pList->head = NULL;
+        pList->tail = NULL;
+    }
+    else
+    {
+        pList->head = pList->head->next;
+        pList->head->prev = NULL;
+
+    }
+    pList->size--;
+    free(head);
+}
 
 int isEmpty(List* pList) {
     if (pList == NULL) {
@@ -122,16 +162,17 @@ int isEmpty(List* pList) {
     }
 }
 
-struct node* find_ID(List *pList, int giftID) {
+//find the gift with the given ID
+node* FindID(List *pList, int giftID) {
 
     //start from the first link
-    struct node* current = pList->head;
+    node* current = pList->head;
 
     //if list is empty
-    if(head == NULL) {
+    if(current == NULL) {
         return NULL;
     }
-    int current_ID = current->data->giftID;
+    int current_ID = current->data.giftID;
     //navigate through list
     while(current_ID != giftID) {
 
@@ -140,7 +181,8 @@ struct node* find_ID(List *pList, int giftID) {
             return NULL;
         } else {
             //go to next link
-            current_ID = current->next->data->giftID;
+            current_ID = current->next->data.giftID;
+            current = current->next;
         }
     }
     //if data found, return the current Link
@@ -148,39 +190,40 @@ struct node* find_ID(List *pList, int giftID) {
 }
 
  
-int find_ready(List *pList) {
-
+int FindReady(List *pList) {
     //start from the first link
-    struct node* current = pList->head;
-
+    node* current = pList->head;
     //if list is empty
-    if(head == NULL) {
-        return NULL;
+    if(current == NULL) {
+        return -1;
     }
-    Gift* g;
+    Gift g;
     int giftType, current_ID;
     //navigate through list
     while(current != NULL) {
         g = current->data;
-        giftType = g->giftType;
-        current_ID = g->giftID;
+        giftType = g.giftType;
+        current_ID = g.giftID;
         if(giftType == 4){
-            if(g->painting == 1 && g->qa == 1){
-                break;
+            if(g.painting == 1 && g.qa == 1){
+                return current_ID;
             }
-            current = current->next;
         }
         else if(giftType == 5){
-            if(g->assembly == 1 && g->qa == 1){
-                break;
+            if(g.assembly == 1 && g.qa == 1){
+                return current_ID;
             }
-            current = current->next;
         }
+        current = current->next;
     }
-    //if it is last node
-    if(current->next == NULL) {
-        return -1;
+    //if it is not found
+    return -1;
+}
+
+void printList(List* pList){
+    node *current = pList->head;
+    while(current!=NULL){
+        printf("Gift ID: %d\n",current->data.giftID);
+        current = current->next;
     }
-    //if data found, return the current Link
-    return current_ID;
 }
