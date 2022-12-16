@@ -12,6 +12,9 @@ typedef struct {
     char taskType;
     int giftType;
     char responsible;
+    int giftTime;
+    int taskTime;
+    int completionTime;
     // you might want to add variables here!
 } Task;
 

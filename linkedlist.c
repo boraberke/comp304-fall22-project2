@@ -12,6 +12,8 @@ typedef struct {
     int painting;
     int assembly;
     int qa;
+    int packageTime;
+    int giftTime;
 } Gift;
 
 typedef struct node {
