@@ -7,8 +7,8 @@
 #define FALSE 0
 
 typedef struct {
-    int giftID;
-    int giftType;
+    int ID;
+    int type;
     int painting;
     int assembly;
     int qa;
@@ -30,10 +30,10 @@ typedef struct List {
 List *ConstructList(int limit);
 void DestructList(List *pList);
 int Add(List *pList, Gift g);
-void Delete(List *pList, int giftID);
+void Delete(List *pList, int ID);
 void DeleteFirst(List *pList);
-int isEmpty(List *pList);
-node* FindID(List *pList, int giftID);
+int isListEmpty(List *pList);
+node* FindID(List *pList, int ID);
 int FindReady(List *pList);
 
 List *ConstructList(int limit) {
@@ -52,11 +52,10 @@ List *ConstructList(int limit) {
     return list;
 }
 
-//NEEDS TO BE UPDATED
 void DestructList(List *pList) {
     node* current = pList->head;
     node* next;
-    while (!isEmpty(pList)) {
+    while (!isListEmpty(pList)) {
         DeleteFirst(pList);
     }
     free(pList);
@@ -91,15 +90,15 @@ int Add(List *pList, Gift g) {
 }
 
 //delete a link with given key
-void Delete(List *pList, int giftID) {
+void Delete(List *pList, int ID) {
 
-    if(isEmpty(pList)) {
+    if(isListEmpty(pList)) {
         return;
     }
     //navigate through list
-    node* current = FindID(pList, giftID);
+    node* current = FindID(pList, ID);
     //found a match, update the link
-    if(current->data.giftID == pList->head->data.giftID) {
+    if(current->data.ID == pList->head->data.ID) {
         //change first to point to next link
         pList->head = pList->head->next;
         if(pList->head == NULL)
@@ -112,7 +111,7 @@ void Delete(List *pList, int giftID) {
 
         }
     }
-    else if(current->data.giftID == pList->tail->data.giftID) 
+    else if(current->data.ID == pList->tail->data.ID) 
     {
         pList->tail = pList->tail->prev;
         pList->tail->next = NULL;
@@ -130,7 +129,7 @@ void Delete(List *pList, int giftID) {
 //delete head of the list
 void DeleteFirst(List *pList) {
 
-    if(isEmpty(pList)) {
+    if(isListEmpty(pList)) {
         return;
     }
     //navigate through list
@@ -151,7 +150,7 @@ void DeleteFirst(List *pList) {
     free(head);
 }
 
-int isEmpty(List* pList) {
+int isListEmpty(List* pList) {
     if (pList == NULL) {
         return FALSE;
     }
@@ -163,7 +162,7 @@ int isEmpty(List* pList) {
 }
 
 //find the gift with the given ID
-node* FindID(List *pList, int giftID) {
+node* FindID(List *pList, int ID) {
 
     //start from the first link
     node* current = pList->head;
@@ -172,16 +171,16 @@ node* FindID(List *pList, int giftID) {
     if(current == NULL) {
         return NULL;
     }
-    int current_ID = current->data.giftID;
+    int current_ID = current->data.ID;
     //navigate through list
-    while(current_ID != giftID) {
+    while(current_ID != ID) {
 
         //if it is last node
         if(current->next == NULL) {
             return NULL;
         } else {
             //go to next link
-            current_ID = current->next->data.giftID;
+            current_ID = current->next->data.ID;
             current = current->next;
         }
     }
@@ -193,25 +192,25 @@ node* FindID(List *pList, int giftID) {
 int FindReady(List *pList) {
     //start from the first link
     node* current = pList->head;
+    Gift g;
     //if list is empty
     if(current == NULL) {
         return -1;
     }
-    Gift g;
     int giftType, current_ID;
     //navigate through list
     while(current != NULL) {
         g = current->data;
-        giftType = g.giftType;
-        current_ID = g.giftID;
+        giftType = g.type;
+        current_ID = g.ID;
         if(giftType == 4){
             if(g.painting == 1 && g.qa == 1){
-                return current_ID;
+                return g.ID;
             }
         }
         else if(giftType == 5){
             if(g.assembly == 1 && g.qa == 1){
-                return current_ID;
+                return g.ID;
             }
         }
         current = current->next;
@@ -223,7 +222,7 @@ int FindReady(List *pList) {
 void printList(List* pList){
     node *current = pList->head;
     while(current!=NULL){
-        printf("Gift ID: %d\n",current->data.giftID);
+        printf("Gift ID: %d\n",current->data.ID);
         current = current->next;
     }
 }

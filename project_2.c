@@ -1,5 +1,5 @@
 #include "queue.c"
-//#include "linkedlist.c"
+#include "linkedlist.c"
 #include <sys/time.h>
 #include <string.h>
 #include <pthread.h>
@@ -16,7 +16,7 @@ int seed = 10;               // seed for randomness
 int emergencyFrequency = 30; // frequency of emergency gift requests from New Zealand
 int giftID = 0;
 int taskID = 0;
-
+int currentTime = 0;         // keeping track of time
 
 void *ElfA(); // the one that can paint
 void *ElfB(); // the one that can assemble
@@ -29,6 +29,8 @@ Queue *packaging;
 Queue *assembly;
 Queue *qa;
 Queue *delivery;
+//A list to keep track of both QA and Assembly for type 4, QA and Painting for type 5.
+List *waiting_for_packaging;
 
 // mutex declarations
 pthread_mutex_t mtxGiftCount;
@@ -39,11 +41,14 @@ pthread_mutex_t mtxAssembly;
 pthread_mutex_t mtxQa;
 pthread_mutex_t mtxDelivery;
 pthread_mutex_t mtxWaiting;
+pthread_mutex_t mtxTime;
 
 // our function declarations
 int getGiftType();
 void addGiftToQueues(int giftType, int *giftID, int *taskID);
 void printTask(Task *t);
+void updateTime(int sec);
+int checkTime();
 
 // pthread sleeper function
 int pthread_sleep(int seconds)
@@ -97,6 +102,7 @@ int main(int argc, char **argv)
     assembly = ConstructQueue(1000);
     qa = ConstructQueue(1000);
     delivery = ConstructQueue(1000);
+    waiting_for_packaging = ConstructList(1000);
 
     // initialize mutexes
     pthread_mutex_init(&mtxGiftCount, NULL);
@@ -107,7 +113,7 @@ int main(int argc, char **argv)
     pthread_mutex_init(&mtxQa, NULL);
     pthread_mutex_init(&mtxDelivery, NULL);
     pthread_mutex_init(&mtxWaiting, NULL);
-
+    pthread_mutex_init(&mtxTime, NULL);
     srand(seed); // feed the seed
 
     pthread_t threads[NUM_THREADS];
@@ -119,61 +125,117 @@ int main(int argc, char **argv)
 
     /* Last thing that main() should do */
     pthread_exit(NULL);
+    DestructQueue(painting);
+    DestructQueue(packaging);
+    DestructQueue(assembly);
+    DestructQueue(qa);
+    DestructQueue(delivery);
+    DestructList(waiting_for_packaging);
 
     return 0;
 }
 
 void *ElfA()
 { // the one that can paint
-
+    //int now = checkTime();
+    //while (now <= simulationTime)
     for (int i = 0; i < simulationTime; i++)
     {
-        pthread_mutex_lock(&mtxPackaging);
-        if (!isEmpty(packaging))
+        pthread_mutex_lock(&mtxWaiting);
+        int gID = FindReady(waiting_for_packaging);
+        if(gID != -1)
         {
-            Task t = Dequeue(packaging);
-            t.responsible = 'A';
-            printTask(&t);
-            pthread_mutex_unlock(&mtxPackaging);
-            pthread_sleep(PACKAGING_TIME);
-            // Add the next task to delivery queue
+            Task t;
+            node* current = FindID(waiting_for_packaging, gID);
+            Gift g = current->data;
+            t.taskType = 'C';
+            t.giftID = gID;
+            t.giftType = g.type;
+            Delete(waiting_for_packaging, gID);
+            pthread_mutex_unlock(&mtxWaiting);
             pthread_mutex_lock(&mtxTaskCount);
             taskID++;
             t.taskID = taskID;
             pthread_mutex_unlock(&mtxTaskCount);
-            t.taskType = 'D';
-            pthread_mutex_lock(&mtxDelivery);
-            Enqueue(delivery, t);
-            pthread_mutex_unlock(&mtxDelivery);
-            
+            t.responsible = 'A';
+            printTask(&t);
+            pthread_sleep(PACKAGING_TIME);
+            updateTime(PACKAGING_TIME);
         }
         else
         {
-            pthread_mutex_unlock(&mtxPackaging);
-            pthread_mutex_lock(&mtxPainting);
-            if (!isEmpty(painting))
+            pthread_mutex_unlock(&mtxWaiting);
+            pthread_mutex_lock(&mtxPackaging);
+            if (!isEmpty(packaging))
             {
-                Task t = Dequeue(painting);
+                Task t = Dequeue(packaging);
                 t.responsible = 'A';
                 printTask(&t);
-                pthread_mutex_unlock(&mtxPainting);
-                pthread_sleep(PAINTING_TIME);
-                // if type 2 continue like below
-                // Add the same task to queue of packaging
+                pthread_mutex_unlock(&mtxPackaging);
+                pthread_sleep(PACKAGING_TIME);
+                updateTime(PACKAGING_TIME);
+                // Add the next task to delivery queue
                 pthread_mutex_lock(&mtxTaskCount);
                 taskID++;
                 t.taskID = taskID;
                 pthread_mutex_unlock(&mtxTaskCount);
-                t.taskType = 'C';
-                pthread_mutex_lock(&mtxPackaging);
-                Enqueue(packaging, t);
+                t.taskType = 'D';
+                pthread_mutex_lock(&mtxDelivery);
+                Enqueue(delivery, t);
+                pthread_mutex_unlock(&mtxDelivery);
+                
+            }
+            else
+            {
                 pthread_mutex_unlock(&mtxPackaging);
+                pthread_mutex_lock(&mtxPainting);
+                if (!isEmpty(painting))
+                {
+                    Task t = Dequeue(painting);
+                    t.responsible = 'A';
+                    printTask(&t);
+                    pthread_mutex_unlock(&mtxPainting);
+                    pthread_sleep(PAINTING_TIME);
+                    updateTime(PAINTING_TIME);
+                    if(t.giftType == 4)
+                    {
+                        pthread_mutex_lock(&mtxWaiting);
+                        node* gift = FindID(waiting_for_packaging, t.giftID);
+                        if(gift == NULL)
+                        {
+                            Gift g;
+                            g.type = t.giftType;
+                            g.ID = t.giftID;
+                            g.painting = 1;
+                            Add(waiting_for_packaging, g);
+                        }
+                        else
+                        {
+                            gift->data.painting = 1;
+                        }
+                        pthread_mutex_unlock(&mtxWaiting);
+                    }
+                    else
+                    {
+                        // Add the same task to queue of packaging
+                        pthread_mutex_lock(&mtxTaskCount);
+                        taskID++;
+                        t.taskID = taskID;
+                        pthread_mutex_unlock(&mtxTaskCount);
+                        t.taskType = 'C';
+                        pthread_mutex_lock(&mtxPackaging);
+                        Enqueue(packaging, t);
+                        pthread_mutex_unlock(&mtxPackaging);
+                    }                
             }
             else
             {
                 pthread_mutex_unlock(&mtxPainting);
                 pthread_sleep(NORMAL_WAITING_TIME);
+                updateTime(NORMAL_WAITING_TIME);
             }
+        }
+            
         }
     }
     pthread_exit(NULL);
@@ -182,54 +244,105 @@ void *ElfA()
 void *ElfB()
 { // the one that can assemble
 
+    //int now = checkTime();
+    //while (now <= simulationTime)
     for (int i = 0; i < simulationTime; i++)
     {
-
-        pthread_mutex_lock(&mtxPackaging);
-        if (!isEmpty(packaging))
+        pthread_mutex_lock(&mtxWaiting);
+        int gID = FindReady(waiting_for_packaging);
+        if(gID != -1)
         {
-            Task t = Dequeue(packaging);
-            t.responsible = 'B';
-            printTask(&t);
-            pthread_mutex_unlock(&mtxPackaging);
-            pthread_sleep(PACKAGING_TIME);
-            // Add the same task to delivery queue
+            Task t;
+            node* current = FindID(waiting_for_packaging, gID);
+            Gift g = current->data;
+            t.taskType = 'C';
+            t.giftID = g.ID;
+            t.giftType = g.type;
+            Delete(waiting_for_packaging, gID);
+            pthread_mutex_unlock(&mtxWaiting);
             pthread_mutex_lock(&mtxTaskCount);
             taskID++;
             t.taskID = taskID;
             pthread_mutex_unlock(&mtxTaskCount);
-            t.taskType = 'D';
-            pthread_mutex_lock(&mtxDelivery);
-            Enqueue(delivery, t);
-            pthread_mutex_unlock(&mtxDelivery);
+            t.responsible = 'B';
+            printTask(&t);
+            pthread_sleep(PACKAGING_TIME);
+            updateTime(PACKAGING_TIME);
         }
         else
         {
-            pthread_mutex_unlock(&mtxPackaging);
-            pthread_mutex_lock(&mtxAssembly);
-            if (!isEmpty(assembly))
+            pthread_mutex_unlock(&mtxWaiting);
+            pthread_mutex_lock(&mtxPackaging);
+            if (!isEmpty(packaging))
             {
-                Task t = Dequeue(assembly);
+                Task t = Dequeue(packaging);
                 t.responsible = 'B';
                 printTask(&t);
-                pthread_mutex_unlock(&mtxAssembly);
-                pthread_sleep(ASSEMBLY_TIME);
-                // Add the same task to queue of packaging
+                pthread_mutex_unlock(&mtxPackaging);
+                pthread_sleep(PACKAGING_TIME);
+                updateTime(PACKAGING_TIME);
+                // Add the same task to delivery queue
                 pthread_mutex_lock(&mtxTaskCount);
                 taskID++;
                 t.taskID = taskID;
                 pthread_mutex_unlock(&mtxTaskCount);
-                t.taskType = 'C';
-                pthread_mutex_lock(&mtxPackaging);
-                Enqueue(packaging, t);
-                pthread_mutex_unlock(&mtxPackaging);
+                t.taskType = 'D';
+                pthread_mutex_lock(&mtxDelivery);
+                Enqueue(delivery, t);
+                pthread_mutex_unlock(&mtxDelivery);
             }
             else
             {
-                pthread_mutex_unlock(&mtxAssembly);
-                pthread_sleep(NORMAL_WAITING_TIME);
+                pthread_mutex_unlock(&mtxPackaging);
+                pthread_mutex_lock(&mtxAssembly);
+                if (!isEmpty(assembly))
+                {
+                    Task t = Dequeue(assembly);
+                    t.responsible = 'B';
+                    printTask(&t);
+                    pthread_mutex_unlock(&mtxAssembly);
+                    pthread_sleep(ASSEMBLY_TIME);
+                    updateTime(ASSEMBLY_TIME);
+                    if(t.giftType == 5)
+                    {
+                        pthread_mutex_lock(&mtxWaiting);
+                        node* gift = FindID(waiting_for_packaging, t.giftID);
+                        if(gift == NULL)
+                        {
+                            Gift g;
+                            g.type = t.giftType;
+                            g.ID = t.giftID;
+                            g.assembly = 1;
+                            Add(waiting_for_packaging, g);
+                        }
+                        else
+                        {
+                            gift->data.assembly = 1;
+                        }
+                        pthread_mutex_unlock(&mtxWaiting);
+                    }
+                    else
+                    {
+                        // Add the same task to queue of packaging
+                        pthread_mutex_lock(&mtxTaskCount);
+                        taskID++;
+                        t.taskID = taskID;
+                        pthread_mutex_unlock(&mtxTaskCount);
+                        t.taskType = 'C';
+                        pthread_mutex_lock(&mtxPackaging);
+                        Enqueue(packaging, t);
+                        pthread_mutex_unlock(&mtxPackaging);
+                    }
+                }
+                else
+                {
+                    pthread_mutex_unlock(&mtxAssembly);
+                    pthread_sleep(NORMAL_WAITING_TIME);
+                    updateTime(NORMAL_WAITING_TIME);
+                }
             }
         }
+        
     }
     pthread_exit(NULL);
 }
@@ -237,6 +350,8 @@ void *ElfB()
 // manages Santa's tasks
 void *Santa()
 {
+    //int now = checkTime();
+    //while(now <= simulationTime)
     for (int i = 0; i < simulationTime; i++)
     {
 
@@ -248,6 +363,7 @@ void *Santa()
             printTask(&t);
             pthread_mutex_unlock(&mtxDelivery);
             pthread_sleep(DELIVERY_TIME);
+            updateTime(DELIVERY_TIME);
         }
         else
         {
@@ -259,20 +375,44 @@ void *Santa()
                 t.responsible = 'S';
                 printTask(&t);
                 pthread_mutex_unlock(&mtxQa);
-                pthread_mutex_lock(&mtxTaskCount);
-                taskID++;
-                t.taskID = taskID;
-                pthread_mutex_unlock(&mtxTaskCount);
-                t.taskType = 'D';
-                pthread_mutex_lock(&mtxDelivery);
-                Enqueue(delivery, t);
-                pthread_mutex_unlock(&mtxDelivery);
                 pthread_sleep(QA_TIME);
+                updateTime(QA_TIME);
+                if(t.giftType == 5 || t.giftType == 4)
+                {
+                    pthread_mutex_lock(&mtxWaiting);
+                    node* gift = FindID(waiting_for_packaging, t.giftID);
+                    if(gift == NULL)
+                    {
+                        Gift g;
+                        g.type = t.giftType;
+                        g.ID = t.giftID;
+                        g.qa = 1;
+                        Add(waiting_for_packaging, g);
+                    }
+                    else
+                    {
+                        gift->data.qa = 1;
+                    }
+                    pthread_mutex_unlock(&mtxWaiting);
+                }
+                else
+                {
+                    pthread_mutex_unlock(&mtxQa);
+                    pthread_mutex_lock(&mtxTaskCount);
+                    taskID++;
+                    t.taskID = taskID;
+                    pthread_mutex_unlock(&mtxTaskCount);
+                    t.taskType = 'D';
+                    pthread_mutex_lock(&mtxDelivery);
+                    Enqueue(delivery, t);
+                    pthread_mutex_unlock(&mtxDelivery);
+                }
             }
             else
             {
                 pthread_mutex_unlock(&mtxQa);
                 pthread_sleep(NORMAL_WAITING_TIME);
+                updateTime(NORMAL_WAITING_TIME);
             }
         }
     }
@@ -355,7 +495,7 @@ void *ControlThread()
             free(t);
         }
         pthread_sleep(NORMAL_WAITING_TIME);
-        
+        updateTime(NORMAL_WAITING_TIME);        
     }
     pthread_exit(NULL);
 }
@@ -392,4 +532,20 @@ int getGiftType()
 void printTask(Task *t)
 {
     printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c, Responsible: %c\n", t->taskID, t->giftID, t->giftType, t->taskType, t->responsible);
+}
+
+void updateTime(int sec)
+{
+    pthread_mutex_lock(&mtxTime);
+    currentTime += sec;
+    pthread_mutex_unlock(&mtxTime);
+}
+
+int checkTime()
+{
+    int ret;
+    pthread_mutex_lock(&mtxTime);
+    ret = currentTime;
+    pthread_mutex_unlock(&mtxTime);
+    return ret;
 }
