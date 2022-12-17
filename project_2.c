@@ -561,9 +561,9 @@ int getGiftType()
 void logHeaders()
 {
     const char* log_string = "Task ID    Gift ID      Gift Type   Task Type  Request Time     Task Arrival    TT     Responsible";
-    FILE* log_file = fopen("events.log", "w");  // open the log file in append mode
-    fprintf(log_file, "%s\n", log_string);  // print the log string to the file
-    fclose(log_file);  // close the file
+    FILE* log_file = fopen("events.log", "w"); // open the log file in write mode
+    fprintf(log_file, "%s\n", log_string);  
+    fclose(log_file);  
 }
 
 void printTask(Task *t)
