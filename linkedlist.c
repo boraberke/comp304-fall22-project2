@@ -14,6 +14,7 @@ typedef struct {
     int qa;
     int packageTime;
     int giftTime;
+    int newZealand;
 } Gift;
 
 typedef struct node {

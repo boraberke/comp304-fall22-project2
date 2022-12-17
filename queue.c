@@ -15,6 +15,7 @@ typedef struct {
     int giftTime;
     int taskTime;
     int completionTime;
+    int newZealand;
     // you might want to add variables here!
 } Task;
 
