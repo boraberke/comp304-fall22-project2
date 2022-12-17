@@ -373,7 +373,7 @@ void *Santa()
     {
         //priority for delivery tasks
         pthread_mutex_lock(&mtxWaiting);
-        int qa_waiting = NumReady(waiting_for_packaging);
+        int qa_waiting = WaitingQA(waiting_for_packaging);
         pthread_mutex_unlock(&mtxWaiting);
         pthread_mutex_lock(&mtxDelivery);
         if (!(isEmpty(delivery) || qa_waiting >= 3))

@@ -38,7 +38,7 @@ void DeleteFirst(List *pList);
 int isListEmpty(List *pList);
 node* FindID(List *pList, int ID);
 int FindReady(List *pList);
-int NumReady(List *pList);
+int WaitingQA(List *pList);
 
 List *ConstructList(int limit) {
     List *list = (List*) malloc(sizeof (List));
@@ -257,7 +257,7 @@ int FindReady(List *pList) {
     }
 }
 
-int NumReady(List *pList)
+int WaitingQA(List *pList)
 {
     int ret = 0;
     //start from the first link
@@ -274,12 +274,12 @@ int NumReady(List *pList)
         giftType = g.type;
         current_ID = g.ID;
         if(giftType == 4){
-            if(g.painting == 1 && g.qa == 1){
+            if(g.qa == 0){
                 ret++;
             }
         }
         else if(giftType == 5){
-            if(g.assembly == 1 && g.qa == 1){
+            if(g.qa == 0){
                 ret++;
             }
         }
