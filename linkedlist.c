@@ -192,7 +192,7 @@ node* FindID(List *pList, int ID) {
     return current;
 }
 
- 
+//gives priority to newZealand gifts
 int FindReady(List *pList) {
     //start from the first link
     node* current = pList->head;
@@ -201,26 +201,52 @@ int FindReady(List *pList) {
     if(current == NULL) {
         return -1;
     }
-    int giftType, current_ID;
-    //navigate through list
+    int giftType, current_ID, newZealand;
+    int smallest_nonZealand = pList->limit;
+    //navigate through list ofr newZealand gifts
     while(current != NULL) {
         g = current->data;
         giftType = g.type;
         current_ID = g.ID;
+        newZealand = g.newZealand;
         if(giftType == 4){
             if(g.painting == 1 && g.qa == 1){
-                return g.ID;
+                // if a ready New Zealand gift is found return the ID
+                if(newZealand)
+                {
+                    return current_ID;
+                }
+                else
+                {
+                    // return the ready gift that has been put the earliest
+                    if (current_ID <= smallest_nonZealand)
+                    {
+                        smallest_nonZealand = current_ID;
+                    }
+                }
             }
         }
         else if(giftType == 5){
             if(g.assembly == 1 && g.qa == 1){
-                return g.ID;
+                // if a ready New Zealand gift is found return the ID
+                if(newZealand)
+                {
+                    return current_ID;
+                }
+                else
+                {
+                    // return the ready gift that has been put the earliest
+                    if (current_ID <= smallest_nonZealand)
+                    {
+                        smallest_nonZealand = current_ID;
+                    }
+                }
             }
-        }
+        }               
         current = current->next;
     }
-    //if it is not found
-    return -1;
+    //if newZealand gift is not found return a ready not New Zealand gift
+    return smallest_nonZealand;
 }
 
 int NumReady(List *pList)
