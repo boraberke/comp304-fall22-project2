@@ -203,7 +203,7 @@ int FindReady(List *pList) {
     }
     int giftType, current_ID, newZealand;
     int smallest_nonZealand = pList->limit;
-    //navigate through list ofr newZealand gifts
+    //navigate through list
     while(current != NULL) {
         g = current->data;
         giftType = g.type;
@@ -245,8 +245,16 @@ int FindReady(List *pList) {
         }               
         current = current->next;
     }
-    //if newZealand gift is not found return a ready not New Zealand gift
-    return smallest_nonZealand;
+    //if no gift is found return -1
+    if (smallest_nonZealand == pList->limit)
+    {
+        return -1;
+    }
+    else
+    //if newZealand gift is not found but another ready gift is found return a ready non-New Zealand gift
+    {
+        return smallest_nonZealand;
+    }
 }
 
 int NumReady(List *pList)
