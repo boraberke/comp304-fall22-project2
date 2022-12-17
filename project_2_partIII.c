@@ -147,7 +147,7 @@ void *ElfA()
         pthread_mutex_lock(&mtxWaiting);
         int gID = FindReady(waiting_for_packaging);
         // checking if any type 4 or 5 might be waiting in the linked list
-        if(gID != -1)
+        if(gID != -1 && !checkZealand)
         {
             // if found create the task object to keep log and delete that gift from the list.
             Task t;
@@ -178,7 +178,7 @@ void *ElfA()
             checkZealand = painting->isGiftFromNewZealand;
             pthread_mutex_unlock(&mtxPainting);
             pthread_mutex_lock(&mtxPackaging);
-            if (!isEmpty(packaging))
+            if (!isEmpty(packaging) && !checkZealand)
             {
                 Task t = Dequeue(packaging);
                 pthread_mutex_unlock(&mtxPackaging);
@@ -269,7 +269,7 @@ void *ElfB()
         pthread_mutex_lock(&mtxWaiting);
         int gID = FindReady(waiting_for_packaging);
         // checking if any type 4 or 5 might be waiting in the linked list
-        if(gID != -1)
+        if(gID != -1 && !checkZealand)
         {
             // if found create the task object to keep log and delete that gift from the list.
             Task t;
@@ -300,7 +300,7 @@ void *ElfB()
             checkZealand = assembly->isGiftFromNewZealand;
             pthread_mutex_unlock(&mtxAssembly);
             pthread_mutex_lock(&mtxPackaging);
-            if (!isEmpty(packaging))
+            if (!isEmpty(packaging) && !checkZealand)
             {
                 Task t = Dequeue(packaging);
                 pthread_mutex_unlock(&mtxPackaging);
@@ -391,7 +391,7 @@ void *Santa()
         int checkZealand = qa->isGiftFromNewZealand;
         pthread_mutex_unlock(&mtxQa);
         pthread_mutex_lock(&mtxDelivery);
-        if (!isEmpty(delivery))
+        if (!isEmpty(delivery) && !checkZealand)
         {
             Task t = Dequeue(delivery);
             pthread_mutex_unlock(&mtxDelivery);
@@ -506,7 +506,7 @@ void *ControlThread()
             t->taskID = taskID;
             pthread_mutex_unlock(&mtxTaskCount);
             t->giftType = giftType;
-            if ((seconds - start_time)% 30 == 0)
+            if ((seconds - start_time)% 30 == 0 && (seconds - start_time) != 0)
             {
                 t->newZealand = 1;
             }

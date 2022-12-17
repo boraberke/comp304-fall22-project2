@@ -103,7 +103,7 @@ int Enqueue(Queue *pQueue, Task t) {
 
 Task Dequeue(Queue *pQueue) {
     if (pQueue->isGiftFromNewZealand == TRUE){
-        pQueue->isGiftFromNewZealand == FALSE;
+        pQueue->isGiftFromNewZealand = FALSE;
         return pQueue->giftFromNewZealand;
     }
     /*the queue is empty or bad param*/
@@ -140,6 +140,14 @@ void printQueue(Queue *queue, const char *name, int second)
 
     printf("At %d sec %s: ", second, name);
 
+    if (queue->isGiftFromNewZealand == TRUE){
+        Task giftFromNewZealand = queue->giftFromNewZealand;
+        printf("%d", giftFromNewZealand.taskID);
+        if (queue->head != NULL)
+        {
+            printf(", ");
+        }
+    }
     NODE *curr = queue->head;
     while (curr != NULL)
     {
