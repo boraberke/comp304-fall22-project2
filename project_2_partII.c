@@ -372,8 +372,11 @@ void *Santa()
     while(seconds < start_time + simulationTime)
     {
         //priority for delivery tasks
+        pthread_mutex_lock(&mtxWaiting);
+        int qa_waiting = NumReady(waiting_for_packaging);
+        pthread_mutex_unlock(&mtxWaiting);
         pthread_mutex_lock(&mtxDelivery);
-        if (!isEmpty(delivery))
+        if (!(isEmpty(delivery) || qa_waiting >= 3))
         {
             Task t = Dequeue(delivery);
             pthread_mutex_unlock(&mtxDelivery);
