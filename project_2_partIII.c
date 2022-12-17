@@ -141,6 +141,9 @@ void *ElfA()
     time_t seconds = time(NULL);
     while (seconds < start_time + simulationTime)
     {
+        pthread_mutex_lock(&mtxPainting);
+        int checkZealand = painting->isGiftFromNewZealand;
+        pthread_mutex_unlock(&mtxPainting);
         pthread_mutex_lock(&mtxWaiting);
         int gID = FindReady(waiting_for_packaging);
         // checking if any type 4 or 5 might be waiting in the linked list
@@ -171,6 +174,9 @@ void *ElfA()
         {
             // if not found look for type 1, 2 or 3 packaging tasks.
             pthread_mutex_unlock(&mtxWaiting);
+            pthread_mutex_lock(&mtxPainting);
+            checkZealand = painting->isGiftFromNewZealand;
+            pthread_mutex_unlock(&mtxPainting);
             pthread_mutex_lock(&mtxPackaging);
             if (!isEmpty(packaging))
             {
@@ -257,6 +263,9 @@ void *ElfB()
     time_t seconds = time(NULL);
     while (seconds < start_time + simulationTime)
     {
+        pthread_mutex_lock(&mtxAssembly);
+        int checkZealand = assembly->isGiftFromNewZealand;
+        pthread_mutex_unlock(&mtxAssembly);
         pthread_mutex_lock(&mtxWaiting);
         int gID = FindReady(waiting_for_packaging);
         // checking if any type 4 or 5 might be waiting in the linked list
@@ -287,6 +296,9 @@ void *ElfB()
         {
             // if not found look for type 1, 2 or 3 packaging tasks.
             pthread_mutex_unlock(&mtxWaiting);
+            pthread_mutex_lock(&mtxAssembly);
+            checkZealand = assembly->isGiftFromNewZealand;
+            pthread_mutex_unlock(&mtxAssembly);
             pthread_mutex_lock(&mtxPackaging);
             if (!isEmpty(packaging))
             {
@@ -375,6 +387,9 @@ void *Santa()
     while(seconds < start_time + simulationTime)
     {
         //priority for delivery tasks
+        pthread_mutex_lock(&mtxQa);
+        int checkZealand = qa->isGiftFromNewZealand;
+        pthread_mutex_unlock(&mtxQa);
         pthread_mutex_lock(&mtxDelivery);
         if (!isEmpty(delivery))
         {

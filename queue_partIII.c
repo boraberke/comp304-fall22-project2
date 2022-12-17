@@ -73,7 +73,7 @@ int Enqueue(Queue *pQueue, Task t) {
         // this handles only the case where every 30 sec there is a new gift from newZealand
         pQueue->giftFromNewZealand = t;
         pQueue->isGiftFromNewZealand = TRUE;
-        return;
+        return TRUE;
     }
     /* Bad parameter */
     NODE* item = (NODE*) malloc(sizeof (NODE));
