@@ -47,6 +47,7 @@ pthread_mutex_t mtxWaiting;
 // our function declarations
 int getGiftType();
 void addGiftToQueues(int giftType, int *giftID, int *taskID);
+void logHeaders();
 void printTask(Task *t);
 
 // pthread sleeper function
@@ -102,6 +103,9 @@ int main(int argc, char **argv)
     qa = ConstructQueue(1000);
     delivery = ConstructQueue(1000);
     waiting_for_packaging = ConstructList(1000);
+
+    //enter the header logs.
+    logHeaders();
 
     // initialize mutexes
     pthread_mutex_init(&mtxGiftCount, NULL);
@@ -554,8 +558,22 @@ int getGiftType()
         return -1;
     }
 }
+void logHeaders()
+{
+    const char* log_string = "Task ID    Gift ID      Gift Type   Task Type  Request Time     Task Arrival    TT     Responsible";
+    FILE* log_file = fopen("events.log", "w");  // open the log file in append mode
+    fprintf(log_file, "%s\n", log_string);  // print the log string to the file
+    fclose(log_file);  // close the file
+}
 
 void printTask(Task *t)
 {
     printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c, Request Time: %d, Task Arrival: %d, TT: %d, Responsible: %c\n", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);
+    char log_string[100];  // allocate a character array to hold the formatted string
+    snprintf(log_string, sizeof(log_string), "%d             %d             %d           %c           %d                %d           %d          %c", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);  // format the string using snprintf
+    FILE* log_file = fopen("events.log", "a");  // open the log file in append mode
+    fprintf(log_file, "%s\n", log_string);  // print the log string to the file
+    fclose(log_file);  // close the file
 }
+
+
