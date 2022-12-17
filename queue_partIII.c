@@ -31,6 +31,8 @@ typedef struct Queue {
     NODE *tail;
     int size;
     int limit;
+    int isGiftFromNewZealand;
+    Task giftFromNewZealand;
 } Queue;
 
 Queue *ConstructQueue(int limit);
@@ -51,6 +53,7 @@ Queue *ConstructQueue(int limit) {
     queue->size = 0;
     queue->head = NULL;
     queue->tail = NULL;
+    queue->isGiftFromNewZealand = FALSE;
 
     return queue;
 }
@@ -64,6 +67,14 @@ void DestructQueue(Queue *queue) {
 }
 
 int Enqueue(Queue *pQueue, Task t) {
+
+    if(t.newZealand == 1){
+        // add it to a specific holder
+        // this handles only the case where every 30 sec there is a new gift from newZealand
+        pQueue->giftFromNewZealand = t;
+        pQueue->isGiftFromNewZealand = TRUE;
+        return TRUE;
+    }
     /* Bad parameter */
     NODE* item = (NODE*) malloc(sizeof (NODE));
     item->data = t;
@@ -91,6 +102,10 @@ int Enqueue(Queue *pQueue, Task t) {
 }
 
 Task Dequeue(Queue *pQueue) {
+    if (pQueue->isGiftFromNewZealand == TRUE){
+        pQueue->isGiftFromNewZealand = FALSE;
+        return pQueue->giftFromNewZealand;
+    }
     /*the queue is empty or bad param*/
     NODE *item;
     Task ret;
@@ -125,6 +140,14 @@ void printQueue(Queue *queue, const char *name, int second)
 
     printf("At %d sec %s: ", second, name);
 
+    if (queue->isGiftFromNewZealand == TRUE){
+        Task giftFromNewZealand = queue->giftFromNewZealand;
+        printf("%d", giftFromNewZealand.taskID);
+        if (queue->head != NULL)
+        {
+            printf(", ");
+        }
+    }
     NODE *curr = queue->head;
     while (curr != NULL)
     {
