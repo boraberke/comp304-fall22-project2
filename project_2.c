@@ -17,7 +17,6 @@ int seed = 10;               // seed for randomness
 int emergencyFrequency = 30; // frequency of emergency gift requests from New Zealand
 int giftID = 0;
 int taskID = 0;
-time_t seconds;         // keeping track of time
 time_t start_time;
 
 void *ElfA(); // the one that can paint
@@ -139,8 +138,8 @@ int main(int argc, char **argv)
 
 void *ElfA()
 { // the one that can paint
-    time(&seconds);
-    while (seconds <= start_time + simulationTime)
+    time_t seconds = time(NULL);
+    while (seconds < start_time + simulationTime)
     {
         pthread_mutex_lock(&mtxWaiting);
         int gID = FindReady(waiting_for_packaging);
@@ -254,8 +253,8 @@ void *ElfA()
 
 void *ElfB()
 { // the one that can assemble
-    time(&seconds);
-    while (seconds <= start_time + simulationTime)
+    time_t seconds = time(NULL);
+    while (seconds < start_time + simulationTime)
     {
         pthread_mutex_lock(&mtxWaiting);
         int gID = FindReady(waiting_for_packaging);
@@ -369,8 +368,8 @@ void *ElfB()
 // manages Santa's tasks
 void *Santa()
 {
-    time(&seconds);
-    while(seconds <= start_time + simulationTime)
+    time_t seconds = time(NULL);
+    while(seconds < start_time + simulationTime)
     {
         //priority for delivery tasks
         pthread_mutex_lock(&mtxDelivery);
@@ -438,6 +437,7 @@ void *Santa()
                 pthread_sleep(NORMAL_WAITING_TIME);
             }
         }
+        time(&seconds); 
     }
     pthread_exit(NULL);
 }
@@ -446,27 +446,29 @@ void *Santa()
 void *ControlThread()
 { // handles printing and queues (up to you)
 
-    for (int i = 0; i < simulationTime; i++)
+    time_t seconds = time(NULL);
+    while(seconds < start_time + simulationTime)
     {
         // lock all of the queues and print them:
+        int now  = time(NULL) - start_time;
         pthread_mutex_lock(&mtxPainting);
-        printQueue(painting,"painting",i);
+        printQueue(painting,"painting",now);
         pthread_mutex_unlock(&mtxPainting);
 
         pthread_mutex_lock(&mtxPackaging);
-        printQueue(packaging,"packaging",i);
+        printQueue(packaging,"packaging",now);
         pthread_mutex_unlock(&mtxPackaging);
 
         pthread_mutex_lock(&mtxAssembly);
-        printQueue(assembly,"assembly",i);
+        printQueue(assembly,"assembly",now);
         pthread_mutex_unlock(&mtxAssembly);
 
         pthread_mutex_lock(&mtxQa);
-        printQueue(qa,"qa",i);
+        printQueue(qa,"qa",now);
         pthread_mutex_unlock(&mtxQa);
 
         pthread_mutex_lock(&mtxDelivery);
-        printQueue(delivery,"delivery",i);
+        printQueue(delivery,"delivery",now);
         printf("---------------------------\n");
         pthread_mutex_unlock(&mtxDelivery);
 
@@ -548,7 +550,8 @@ void *ControlThread()
             }
             free(t);
         }
-        pthread_sleep(NORMAL_WAITING_TIME);      
+        pthread_sleep(NORMAL_WAITING_TIME);
+        time(&seconds);   
     }
     pthread_exit(NULL);
 }
@@ -593,7 +596,7 @@ void printTask(Task *t)
 {
     //printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c, Request Time: %d, Task Arrival: %d, TT: %d, Responsible: %c\n", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);
     char log_string[100];  // allocate a character array to hold the formatted string
-    snprintf(log_string, sizeof(log_string), "%d             %d             %d           %c           %d                %d           %d          %c", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);  // format the string using snprintf
+    snprintf(log_string, sizeof(log_string), "%d             %d             %d           %c           %d                %d           %d          %c", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime, t->responsible);  // format the string using snprintf
     FILE* log_file = fopen("events.log", "a");  // open the log file in append mode
     fprintf(log_file, "%s\n", log_string);  // print the log string to the file
     fclose(log_file);  // close the file
