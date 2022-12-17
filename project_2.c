@@ -448,6 +448,29 @@ void *ControlThread()
 
     for (int i = 0; i < simulationTime; i++)
     {
+        // lock all of the queues and print them:
+        pthread_mutex_lock(&mtxPainting);
+        printQueue(painting,"painting",i);
+        pthread_mutex_unlock(&mtxPainting);
+
+        pthread_mutex_lock(&mtxPackaging);
+        printQueue(packaging,"packaging",i);
+        pthread_mutex_unlock(&mtxPackaging);
+
+        pthread_mutex_lock(&mtxAssembly);
+        printQueue(assembly,"assembly",i);
+        pthread_mutex_unlock(&mtxAssembly);
+
+        pthread_mutex_lock(&mtxQa);
+        printQueue(qa,"qa",i);
+        pthread_mutex_unlock(&mtxQa);
+
+        pthread_mutex_lock(&mtxDelivery);
+        printQueue(delivery,"delivery",i);
+        printf("---------------------------\n");
+        pthread_mutex_unlock(&mtxDelivery);
+
+
         int giftType = getGiftType();
         if (giftType != -1)
         {
@@ -568,7 +591,7 @@ void logHeaders()
 
 void printTask(Task *t)
 {
-    printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c, Request Time: %d, Task Arrival: %d, TT: %d, Responsible: %c\n", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);
+    //printf("Task ID: %d, Gift ID: %d, Gift Type: %d, Task Type: %c, Request Time: %d, Task Arrival: %d, TT: %d, Responsible: %c\n", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);
     char log_string[100];  // allocate a character array to hold the formatted string
     snprintf(log_string, sizeof(log_string), "%d             %d             %d           %c           %d                %d           %d          %c", t->taskID, t->giftID, t->giftType, t->taskType, t->giftTime, t->taskTime, t->completionTime - t->taskTime,t->responsible);  // format the string using snprintf
     FILE* log_file = fopen("events.log", "a");  // open the log file in append mode

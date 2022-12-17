@@ -113,3 +113,32 @@ int isEmpty(Queue* pQueue) {
         return FALSE;
     }
 }
+
+void printQueue(Queue *queue, const char *name, int second)
+{
+    if (queue == NULL || isEmpty(queue))
+    {
+        printf("%s is empty\n",name);
+        return;
+    }
+
+    printf("At %d sec %s: ", second, name);
+
+    NODE *curr = queue->head;
+    while (curr != NULL)
+    {
+        // Print the taskID of the current node
+        printf("%d", curr->data.taskID);
+
+        // If there are more elements in the queue, print a comma
+        if (curr->prev != NULL)
+        {
+            printf(", ");
+        }
+
+        // Move to the next node in the queue
+        curr = curr->prev;
+    }
+
+    printf("\n");
+}
