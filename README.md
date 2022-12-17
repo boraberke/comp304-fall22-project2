@@ -31,7 +31,7 @@ gcc project_2_partIII.c -o part3
 
 
 
-An example printout of the queues at time 10:
+An example printout of the queues at time 23:
 ```
 At 23 sec painting: 40, 44
 packaging is empty
